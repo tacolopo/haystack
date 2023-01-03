@@ -1,9 +1,13 @@
+use std::str::FromStr;
+
+use cosmwasm_std::Uint128;
 #[cfg(not(feature = "library"))]
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, entry_point};
+use cosmwasm_std::{Coin, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, entry_point};
 use cw2::{set_contract_version, get_contract_version};
 
+use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::state::{CONFIG, Config, DEPOSITAMOUNT};
+use crate::state::{CONFIG, Config, DEPOSITAMOUNT, TOTALDEPOSITS, ADDRESSES};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -11,6 +15,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 //Admin wallet
 const ADMIN: &str = "juno1xh3mylsdmpvn0cp8mpz6uja34nev9w7ur8f945";
+//denom
+const JUNO: &str = "ujunox";
 
 #[entry_point]
 pub fn instantiate(
@@ -27,7 +33,10 @@ pub fn instantiate(
     let config = Config {
         admin: validated_admin.clone(),
     };
+    let zero = Uint128::from_str("0")?;
     CONFIG.save(deps.storage, &config)?;
+    TOTALDEPOSITS.save(deps.storage, &zero)?;
+    ADDRESSES.save(deps.storage, &0)?;
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("admin", validated_admin.to_string()))
@@ -49,11 +58,13 @@ fn execute_deposit(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(1_000_000, JUNO)]))?;
+    //
     let check = DEPOSITAMOUNT.may_load(deps.storage, info.sender.clone())?;
     match check {
         Some(check) => {
             for coin in info.funds {
-                if coin.denom == "ujuno" {
+                if coin.denom == JUNO {
                     let total_amount = coin.amount + check;
                     DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &total_amount)?;
                 }
@@ -61,11 +72,12 @@ fn execute_deposit(
                     continue
                 }
             }
+
             Ok(Response::new())
         }
         None => {
             for coin in info.funds {
-                if coin.denom == "ujuno" {
+                if coin.denom == JUNO {
                     let sent_amount = coin.amount;
                     DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &sent_amount)?;
                 }

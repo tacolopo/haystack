@@ -9,7 +9,7 @@ This assumes you understand the theory and just want to get coding.
 
 ## Creating a new repo from template
 
-Assuming you have a recent version of Rust and Cargo installed
+Assuming you have a recent version of rust and cargo (v1.58.1+) installed
 (via [rustup](https://rustup.rs/)),
 then the following should get you a new repo to start a contract:
 
@@ -24,17 +24,12 @@ cargo install cargo-run-script
 Now, use it to create your new contract.
 Go to the folder in which you want to place it and run:
 
-**Latest**
+
+**Latest: 1.0.0-beta6**
 
 ```sh
 cargo generate --git https://github.com/CosmWasm/cw-template.git --name PROJECT_NAME
-```
-
-For cloning minimal code repo:
-
-```sh
-cargo generate --git https://github.com/CosmWasm/cw-template.git --name PROJECT_NAME -d minimal=true
-```
+````
 
 **Older Version**
 
@@ -42,7 +37,7 @@ Pass version as branch flag:
 
 ```sh
 cargo generate --git https://github.com/CosmWasm/cw-template.git --branch <version> --name PROJECT_NAME
-```
+````
 
 Example:
 
@@ -97,3 +92,15 @@ that have been published.
 Please replace this README file with information about your specific project. You can keep
 the `Developing.md` and `Publishing.md` files as useful referenced, but please set some
 proper description in the README.
+
+## Gitpod integration
+
+[Gitpod](https://www.gitpod.io/) container-based development platform will be enabled on your project by default.
+
+Workspace contains:
+ - **rust**: for builds
+ - [wasmd](https://github.com/CosmWasm/wasmd): for local node setup and client
+ - **jq**: shell JSON manipulation tool
+
+Follow [Gitpod Getting Started](https://www.gitpod.io/docs/getting-started) and launch your workspace.
+

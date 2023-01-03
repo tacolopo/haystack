@@ -1,3 +1,4 @@
+#[cfg(not(feature = "library"))]
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, entry_point};
 use cw2::{set_contract_version, get_contract_version};
 
@@ -48,16 +49,33 @@ fn execute_deposit(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    for coin in info.funds {
-        if coin.denom == "ujuno" {
-            let sent_amount = coin.amount;
-            DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &sent_amount)?;
+    let check = DEPOSITAMOUNT.may_load(deps.storage, info.sender.clone())?;
+    match check {
+        Some(check) => {
+            for coin in info.funds {
+                if coin.denom == "ujuno" {
+                    let total_amount = coin.amount + check;
+                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &total_amount)?;
+                }
+                else {
+                    continue
+                }
+            }
+            Ok(Response::new())
         }
-        else {
-            continue
+        None => {
+            for coin in info.funds {
+                if coin.denom == "ujuno" {
+                    let sent_amount = coin.amount;
+                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &sent_amount)?;
+                }
+                else {
+                    continue
+                }
+            }
+            Ok(Response::new())
         }
     }
-    Ok(Response::new())
 }
 
 #[entry_point]

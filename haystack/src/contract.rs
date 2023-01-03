@@ -59,7 +59,6 @@ fn execute_deposit(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(1_000_000, JUNO)]))?;
-    //
     let check = DEPOSITAMOUNT.may_load(deps.storage, info.sender.clone())?;
     match check {
         Some(check) => {
@@ -67,12 +66,19 @@ fn execute_deposit(
                 if coin.denom == JUNO {
                     let total_amount = coin.amount + check;
                     DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &total_amount)?;
+                    //update total deposits
+                    let current_deposits = TOTALDEPOSITS.load(deps.storage)?;
+                    let total_deposits = total_amount + current_deposits;
+                    TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
+                    //update addresses
+                    let current_addresses = ADDRESSES.load(deps.storage)?;
+                    let total_addresses = current_addresses + 1;
+                    ADDRESSES.save(deps.storage, &total_addresses)?;
                 }
                 else {
                     continue
                 }
             }
-
             Ok(Response::new())
         }
         None => {
@@ -80,6 +86,14 @@ fn execute_deposit(
                 if coin.denom == JUNO {
                     let sent_amount = coin.amount;
                     DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &sent_amount)?;
+                    //update total deposits
+                    let current_deposits = TOTALDEPOSITS.load(deps.storage)?;
+                    let total_deposits = sent_amount + current_deposits;
+                    TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
+                    //update addresses
+                    let current_addresses = ADDRESSES.load(deps.storage)?;
+                    let total_addresses = current_addresses + 1;
+                    ADDRESSES.save(deps.storage, &total_addresses)?;
                 }
                 else {
                     continue

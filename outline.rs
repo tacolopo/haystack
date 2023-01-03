@@ -1,3 +1,10 @@
+// 1. The user calls a deposit function, passing in the amount they want to deposit and their address.
+// 2. The contract stores the user's address and the deposited amount in its state.
+// 3. When the user wants to withdraw their funds, they call a withdraw function, passing in their address.
+// 4. The contract looks up the user's address in its state and retrieves the stored amount.
+// 5. The contract creates a CoinJoin transaction with multiple inputs and outputs, including the user's input and output.
+// 6. The contract broadcasts the CoinJoin transaction to the network and updates its state to reflect the withdrawal.
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BankMsg {
     pub from_address: HumanAddr,

@@ -1,9 +1,8 @@
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, entry_point};
 use cw2::{set_contract_version, get_contract_version};
 
 use crate::error::ContractError;
-use crate::state::{CONFIG, Config};
+use crate::state::{CONFIG, Config, DEPOSITAMOUNT};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -33,17 +32,35 @@ pub fn instantiate(
         .add_attribute("admin", validated_admin.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[entry_point]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: ExecuteMsg,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    match msg {
+        ExecuteMsg::Deposit {  } => execute_deposit(deps, env, info),
+    }
+}
+fn execute_deposit(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    for coin in info.funds {
+        if coin.denom == "ujuno" {
+            let sent_amount = coin.amount;
+            DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &sent_amount)?;
+        }
+        else {
+            continue
+        }
+    }
+    Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[entry_point]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()
 }

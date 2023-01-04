@@ -7,7 +7,7 @@ use cw2::{set_contract_version, get_contract_version};
 
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::state::{CONFIG, Config, DEPOSITAMOUNT, TOTALDEPOSITS, ADDRESSES};
+use crate::state::{CONFIG, Config, DEPOSITAMOUNT, TOTALDEPOSITS, ADDRESSES, Depositor};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -50,13 +50,15 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Deposit {  } => execute_deposit(deps, env, info),
+        ExecuteMsg::Deposit { output_address } => execute_deposit(deps, env, info, output_address),
+        ExecuteMsg::Withdraw {  } => execute_withdraw(deps, env, info)
     }
 }
 fn execute_deposit(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
+    output_address: String,
 ) -> Result<Response, ContractError> {
     assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(1_000_000, JUNO)]))?;
     let check = DEPOSITAMOUNT.may_load(deps.storage, info.sender.clone())?;
@@ -64,11 +66,13 @@ fn execute_deposit(
         Some(check) => {
             for coin in info.funds {
                 if coin.denom == JUNO {
-                    let total_amount = coin.amount + check;
-                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &total_amount)?;
+                    // check sent output string
+                    let validated_output_address = deps.api.addr_validate(&output_address)?;
+                    let updated_depositor_info = Depositor { recipient: validated_output_address, amount: coin.amount + check.amount };
+                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &updated_depositor_info)?;
                     //update total deposits
                     let current_deposits = TOTALDEPOSITS.load(deps.storage)?;
-                    let total_deposits = total_amount + current_deposits;
+                    let total_deposits = updated_depositor_info.amount + current_deposits;
                     TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
                     //update addresses
                     let current_addresses = ADDRESSES.load(deps.storage)?;
@@ -84,11 +88,13 @@ fn execute_deposit(
         None => {
             for coin in info.funds {
                 if coin.denom == JUNO {
-                    let sent_amount = coin.amount;
-                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &sent_amount)?;
+                    // check sent output string
+                    let validated_output_address = deps.api.addr_validate(&output_address)?;
+                    let updated_depositor_info = Depositor { recipient: validated_output_address, amount: coin.amount };
+                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &updated_depositor_info)?;
                     //update total deposits
                     let current_deposits = TOTALDEPOSITS.load(deps.storage)?;
-                    let total_deposits = sent_amount + current_deposits;
+                    let total_deposits = updated_depositor_info.amount + current_deposits;
                     TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
                     //update addresses
                     let current_addresses = ADDRESSES.load(deps.storage)?;
@@ -103,6 +109,16 @@ fn execute_deposit(
         }
     }
 }
+// fn execute_withdraw(
+//     deps: DepsMut,
+//     env: Env,
+//     info: MessageInfo,
+// ) -> Result<Response, ContractError> {
+//     assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, JUNO)]))?;
+//     let 
+
+//     Ok(Response::new())
+// }
 
 #[entry_point]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {

@@ -7,7 +7,7 @@ use cw2::{set_contract_version, get_contract_version};
 
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::state::{CONFIG, Config, DEPOSITAMOUNT, TOTALDEPOSITS, ADDRESSES, Depositor};
+use crate::state::{CONFIG, Config, DEPOSITAMOUNT, TOTALDEPOSITS, Depositor, ADDRESS_COUNT};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -36,7 +36,7 @@ pub fn instantiate(
     let zero = Uint128::from_str("0")?;
     CONFIG.save(deps.storage, &config)?;
     TOTALDEPOSITS.save(deps.storage, &zero)?;
-    ADDRESSES.save(deps.storage, &0)?;
+    ADDRESS_COUNT.save(deps.storage, &0)?;
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("admin", validated_admin.to_string()))
@@ -75,9 +75,9 @@ fn execute_deposit(
                     let total_deposits = updated_depositor_info.amount + current_deposits;
                     TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
                     //update addresses
-                    let current_addresses = ADDRESSES.load(deps.storage)?;
+                    let current_addresses = ADDRESS_COUNT.load(deps.storage)?;
                     let total_addresses = current_addresses + 1;
-                    ADDRESSES.save(deps.storage, &total_addresses)?;
+                    ADDRESS_COUNT.save(deps.storage, &total_addresses)?;
                 }
                 else {
                     continue
@@ -97,9 +97,9 @@ fn execute_deposit(
                     let total_deposits = updated_depositor_info.amount + current_deposits;
                     TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
                     //update addresses
-                    let current_addresses = ADDRESSES.load(deps.storage)?;
+                    let current_addresses = ADDRESS_COUNT.load(deps.storage)?;
                     let total_addresses = current_addresses + 1;
-                    ADDRESSES.save(deps.storage, &total_addresses)?;
+                    ADDRESS_COUNT.save(deps.storage, &total_addresses)?;
                 }
                 else {
                     continue
@@ -109,16 +109,16 @@ fn execute_deposit(
         }
     }
 }
-// fn execute_withdraw(
-//     deps: DepsMut,
-//     env: Env,
-//     info: MessageInfo,
-// ) -> Result<Response, ContractError> {
-//     assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, JUNO)]))?;
-//     let 
-
-//     Ok(Response::new())
-// }
+fn execute_withdraw(
+    _deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, JUNO)]))?;
+    //upload, get contract address, immediately migrate    
+    // let structs = deps.querier.query_wasm_smart(contract_addr, msg)?;
+    Ok(Response::new())
+}
 
 #[entry_point]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {

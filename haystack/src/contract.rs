@@ -1,13 +1,9 @@
-use std::str::FromStr;
-
-use cosmwasm_std::Uint128;
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::{Coin, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, entry_point};
 use cw2::{set_contract_version, get_contract_version};
 
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::state::{CONFIG, Config, DEPOSITAMOUNT, TOTALDEPOSITS, Depositor, ADDRESS_COUNT};
+use crate::state::{CONFIG, Config, COUNTER, Recipients, DEPOSIT};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -33,10 +29,8 @@ pub fn instantiate(
     let config = Config {
         admin: validated_admin.clone(),
     };
-    let zero = Uint128::from_str("0")?;
     CONFIG.save(deps.storage, &config)?;
-    TOTALDEPOSITS.save(deps.storage, &zero)?;
-    ADDRESS_COUNT.save(deps.storage, &0)?;
+    COUNTER.save(deps.storage, &0)?;
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("admin", validated_admin.to_string()))
@@ -51,7 +45,6 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Deposit { output_address } => execute_deposit(deps, env, info, output_address),
-        ExecuteMsg::Withdraw {  } => execute_withdraw(deps, env, info)
     }
 }
 fn execute_deposit(
@@ -60,66 +53,20 @@ fn execute_deposit(
     info: MessageInfo,
     output_address: String,
 ) -> Result<Response, ContractError> {
-    assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(1_000_000, JUNO)]))?;
-    let check = DEPOSITAMOUNT.may_load(deps.storage, info.sender.clone())?;
-    match check {
-        Some(check) => {
-            for coin in info.funds {
-                if coin.denom == JUNO {
-                    // check sent output string
-                    let validated_output_address = deps.api.addr_validate(&output_address)?;
-                    let updated_depositor_info = Depositor { recipient: validated_output_address, amount: coin.amount + check.amount };
-                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &updated_depositor_info)?;
-                    //update total deposits
-                    let current_deposits = TOTALDEPOSITS.load(deps.storage)?;
-                    let total_deposits = updated_depositor_info.amount + current_deposits;
-                    TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
-                    //update addresses
-                    let current_addresses = ADDRESS_COUNT.load(deps.storage)?;
-                    let total_addresses = current_addresses + 1;
-                    ADDRESS_COUNT.save(deps.storage, &total_addresses)?;
-                }
-                else {
-                    continue
-                }
-            }
-            Ok(Response::new())
-        }
-        None => {
-            for coin in info.funds {
-                if coin.denom == JUNO {
-                    // check sent output string
-                    let validated_output_address = deps.api.addr_validate(&output_address)?;
-                    let updated_depositor_info = Depositor { recipient: validated_output_address, amount: coin.amount };
-                    DEPOSITAMOUNT.save(deps.storage, info.sender.clone(), &updated_depositor_info)?;
-                    //update total deposits
-                    let current_deposits = TOTALDEPOSITS.load(deps.storage)?;
-                    let total_deposits = updated_depositor_info.amount + current_deposits;
-                    TOTALDEPOSITS.save(deps.storage, &total_deposits)?;
-                    //update addresses
-                    let current_addresses = ADDRESS_COUNT.load(deps.storage)?;
-                    let total_addresses = current_addresses + 1;
-                    ADDRESS_COUNT.save(deps.storage, &total_addresses)?;
-                }
-                else {
-                    continue
-                }
-            }
-            Ok(Response::new())
-        }
-    }
-}
-fn execute_withdraw(
-    _deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
     assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, JUNO)]))?;
-    //upload, get contract address, immediately migrate    
-    // let structs = deps.querier.query_wasm_smart(contract_addr, msg)?;
+    let validated_output_address = deps.api.addr_validate(&output_address)?;
+    let depositer = Recipients { recipient: validated_output_address };
+    let old_count = COUNTER.load(deps.storage)?;
+    let new_count = old_count + 1;
+    DEPOSIT.save(deps.storage, new_count, &depositer)?;
+    // if new_count == 10 {
+    //     // 1) query all depositors in a config
+    //     // 2) store information in a vector
+    //     // 3) send 9.9 to each recipient
+    // }
+    
     Ok(Response::new())
 }
-
 #[entry_point]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()

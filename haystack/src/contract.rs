@@ -4,7 +4,7 @@ use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, 
 use crate::state::{Config, Recipients, CONFIG, COUNTER, DEPOSIT};
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdError, StdResult,
+    StdError, StdResult, from_binary
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Bound;
@@ -52,7 +52,7 @@ pub fn execute(
 }
 fn execute_deposit(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     output_address: String,
 ) -> Result<Response, ContractError> {
@@ -64,6 +64,10 @@ fn execute_deposit(
     let old_count = COUNTER.load(deps.storage)?;
     let new_count = old_count + 1;
     DEPOSIT.save(deps.storage, new_count, &depositer)?;
+    //query profile name
+    let msg = QueryMsg::AllRecipients { limit: None, start_after: None };
+    let bin = query(deps.as_ref(), env, msg).unwrap();
+    let res: AllRecipientsResponse = from_binary(&bin).unwrap();
     // if new_count == 10 {
     //     // 1) query all depositors in a config
     //     // 2) store information in a vector

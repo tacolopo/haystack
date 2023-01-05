@@ -1,10 +1,13 @@
-use cosmwasm_std::{Coin, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, entry_point};
-use cw2::{set_contract_version, get_contract_version};
-
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::state::{CONFIG, Config, COUNTER, Recipients, DEPOSIT};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
+use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::state::{Config, Recipients, CONFIG, COUNTER, DEPOSIT};
+use cosmwasm_std::{
+    entry_point, to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Order, Response,
+    StdError, StdResult,
+};
+use cw2::{get_contract_version, set_contract_version};
+use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -55,7 +58,9 @@ fn execute_deposit(
 ) -> Result<Response, ContractError> {
     assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, JUNO)]))?;
     let validated_output_address = deps.api.addr_validate(&output_address)?;
-    let depositer = Recipients { recipient: validated_output_address };
+    let depositer = Recipients {
+        recipient: validated_output_address,
+    };
     let old_count = COUNTER.load(deps.storage)?;
     let new_count = old_count + 1;
     DEPOSIT.save(deps.storage, new_count, &depositer)?;
@@ -64,12 +69,37 @@ fn execute_deposit(
     //     // 2) store information in a vector
     //     // 3) send 9.9 to each recipient
     // }
-    
+
     Ok(Response::new())
 }
 #[entry_point]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::AllRecipients { limit, start_after } => {
+            query_all_recipients(deps, env, limit, start_after)
+        }
+    }
+}
+
+//pagination fields
+const MAX_LIMIT: u32 = 10;
+const DEFAULT_LIMIT: u32 = 10;
+
+fn query_all_recipients(
+    deps: Deps,
+    _env: Env,
+    limit: Option<u32>,
+    start_after: Option<u64>,
+) -> StdResult<Binary> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+    let recipients = DEPOSIT
+        .range(deps.storage, None, start, Order::Ascending)
+        .take(limit)
+        .map(|p| Ok(p?.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    to_binary(&AllRecipientsResponse { recipients })
 }
 
 #[entry_point]

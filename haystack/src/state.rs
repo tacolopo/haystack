@@ -16,4 +16,3 @@ pub struct Recipients {
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const DEPOSIT: Map<u64, Recipients> = Map::new("deposit_amount_per_address");
 pub const COUNTER: Item<u64> = Item::new("counter");
-

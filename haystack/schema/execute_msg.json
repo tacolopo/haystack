@@ -5,16 +5,16 @@
     {
       "type": "object",
       "required": [
-        "custom_msg"
+        "deposit"
       ],
       "properties": {
-        "custom_msg": {
+        "deposit": {
           "type": "object",
           "required": [
-            "val"
+            "output_address"
           ],
           "properties": {
-            "val": {
+            "output_address": {
               "type": "string"
             }
           }

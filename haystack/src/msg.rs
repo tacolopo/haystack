@@ -1,3 +1,4 @@
+use crate::state::Recipients;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -16,13 +17,16 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    
+    AllRecipients {
+        limit: Option<u32>,
+        start_after: Option<u64>,
+    },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct CustomResponse {
-    val: String,
+pub struct AllRecipientsResponse {
+    pub recipients: Vec<Recipients>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

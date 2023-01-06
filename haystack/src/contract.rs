@@ -1,5 +1,4 @@
 //To DO
-// 1) Add counter to 10 to execute the bank message send
 // 2) Do tests
 // 3) Scrt testnet (remove migrate)
 
@@ -18,9 +17,9 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 //Admin wallet
-const ADMIN: &str = "juno1xh3mylsdmpvn0cp8mpz6uja34nev9w7ur8f945";
+const ADMIN: &str = "secret1xh3mylsdmpvn0cp8mpz6uja34nev9w7ur8f945";
 //denom
-const JUNO: &str = "ujunox";
+const SCRT: &str = "usecret";
 
 #[entry_point]
 pub fn instantiate(
@@ -61,33 +60,39 @@ fn execute_deposit(
     info: MessageInfo,
     output_address: String,
 ) -> Result<Response, ContractError> {
-    assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, JUNO)]))?;
+    assert_sent_exact_coin(&info.funds, Some(vec![Coin::new(10_000_000, SCRT)]))?;
     let validated_output_address = deps.api.addr_validate(&output_address)?;
     let output_string = validated_output_address.to_string();
     let old_count = COUNTER.load(deps.storage)?;
     let new_count = old_count + 1;
     DEPOSIT.save(deps.storage, new_count, &output_string)?;
-    //query profile name
-    let msg = QueryMsg::AllRecipients {
-        limit: None,
-        start_after: None,
-    };
-    let bin = query(deps.as_ref(), env, msg).unwrap();
-    let res: AllRecipientsResponse = from_binary(&bin).unwrap();
-    let mut messages: Vec<BankMsg> = vec![];
-    for depositer in res.recipients {
-        let bank_msg = BankMsg::Send {
-            to_address: depositer,
-            amount: vec![coin(9_000_000, JUNO)],
+    if new_count == 10 {
+        //query profile name
+        let msg = QueryMsg::AllRecipients {
+            limit: None,
+            start_after: None,
         };
-        messages.push(bank_msg);
+        let bin = query(deps.as_ref(), env, msg).unwrap();
+        let res: AllRecipientsResponse = from_binary(&bin).unwrap();
+        let mut messages: Vec<BankMsg> = vec![];
+        for depositer in res.recipients {
+            let bank_msg = BankMsg::Send {
+                to_address: depositer,
+                amount: vec![coin(9_000_000, SCRT)],
+            };
+            messages.push(bank_msg);
+        }
+        let author_take = BankMsg::Send {
+            to_address: ADMIN.to_string(),
+            amount: vec![Coin::new(10_000_000, SCRT)],
+        };
+        messages.push(author_take);
+        Ok(Response::new().add_messages(messages))
     }
-    let author_take = BankMsg::Send {
-        to_address: ADMIN.to_string(),
-        amount: vec![Coin::new(10_000_000, JUNO)],
-    };
-    messages.push(author_take);
-    Ok(Response::new().add_messages(messages))
+    else {
+        COUNTER.save(deps.storage, &new_count)?;
+        Ok(Response::new())
+    }
 }
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {

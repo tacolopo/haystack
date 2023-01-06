@@ -1,3 +1,8 @@
+//To DO
+// 1) Add counter to 10 to execute the bank message send
+// 2) Do tests
+// 3) Scrt testnet (remove migrate)
+
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
 use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};

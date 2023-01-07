@@ -1,7 +1,6 @@
 //To DO
 // 2) Do tests
 // 3) Scrt testnet (remove migrate)
-
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
 use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -87,6 +86,10 @@ fn execute_deposit(
             amount: vec![Coin::new(10_000_000, SCRT)],
         };
         messages.push(author_take);
+        for num in 1..11 {
+            DEPOSIT.remove(deps.storage, num);
+        }
+        COUNTER.save(deps.storage, &0)?;
         Ok(Response::new().add_messages(messages))
     }
     else {

@@ -4,13 +4,13 @@
 
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, COUNTER, DEPOSIT};
 use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env,
-    MessageInfo, Order, Response, StdError, StdResult,
+    MessageInfo, Order, Response, StdResult,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::{set_contract_version};
 use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -122,22 +122,4 @@ fn query_all_recipients(
         .collect::<StdResult<Vec<_>>>()?;
 
     to_binary(&AllRecipientsResponse { recipients })
-}
-
-#[entry_point]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let ver = get_contract_version(deps.storage)?;
-    if ver.contract != CONTRACT_NAME {
-        return Err(StdError::generic_err("Can only upgrade from same type").into());
-    }
-    //canonical way from official docs https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration/#migrate-which-updates-the-version-only-if-newer
-    #[allow(clippy::cmp_owned)]
-    if ver.version > (*CONTRACT_VERSION).to_string() {
-        return Err(StdError::generic_err("Must upgrade from a lower version").into());
-    }
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default()
-        .add_attribute("action", "migration")
-        .add_attribute("version", CONTRACT_VERSION)
-        .add_attribute("contract", CONTRACT_NAME))
 }

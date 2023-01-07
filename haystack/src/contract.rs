@@ -1,6 +1,3 @@
-//To DO
-// 2) Do tests
-// 3) Scrt testnet (remove migrate)
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
 use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -9,16 +6,17 @@ use cosmwasm_std::{
     coin, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env,
     MessageInfo, Order, Response, StdResult,
 };
-use cw2::{set_contract_version};
+use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 //Admin wallet
-const ADMIN: &str = "secret1xh3mylsdmpvn0cp8mpz6uja34nev9w7ur8f945";
+const ADMIN: &str = "secret1993j5gsv2m3eqlkh7a9hvv8qdrwyr0k7pq5tua";
 //denom
-const SCRT: &str = "usecret";
+const SCRT: &str = "uscrt";
+const WITHDRAW: &str = "secret1eunlgl0l8w4h70m77g5f2jkqn53qvw4k637qzw";
 
 #[entry_point]
 pub fn instantiate(
@@ -82,7 +80,7 @@ fn execute_deposit(
             messages.push(bank_msg);
         }
         let author_take = BankMsg::Send {
-            to_address: ADMIN.to_string(),
+            to_address: WITHDRAW.to_string(),
             amount: vec![Coin::new(10_000_000, SCRT)],
         };
         messages.push(author_take);
@@ -91,8 +89,7 @@ fn execute_deposit(
         }
         COUNTER.save(deps.storage, &0)?;
         Ok(Response::new().add_messages(messages))
-    }
-    else {
+    } else {
         COUNTER.save(deps.storage, &new_count)?;
         Ok(Response::new())
     }

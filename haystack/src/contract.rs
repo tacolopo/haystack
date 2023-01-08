@@ -1,9 +1,16 @@
 use crate::coin_helpers::assert_sent_exact_coin;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{AllRecipientsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, COUNTER, DEPOSIT};
-use cosmwasm_std::{coin, entry_point, BankMsg, Coin, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    coin, entry_point, from_binary, to_binary, BankMsg, Binary, Coin, Deps, DepsMut, Env,
+    MessageInfo, Order, Response, StdResult,
+};
+use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 //Admin wallet
 const ADMIN: &str = "secret1993j5gsv2m3eqlkh7a9hvv8qdrwyr0k7pq5tua";
@@ -21,6 +28,7 @@ pub fn instantiate(
     if info.sender != ADMIN {
         return Err(ContractError::Unauthorized {});
     }
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let validated_admin = deps.api.addr_validate(ADMIN)?;
     let config = Config {
         admin: validated_admin.clone(),
@@ -45,7 +53,7 @@ pub fn execute(
 }
 fn execute_deposit(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     output_address: String,
 ) -> Result<Response, ContractError> {
@@ -56,14 +64,15 @@ fn execute_deposit(
     let new_count = old_count + 1;
     DEPOSIT.save(deps.storage, new_count, &output_string)?;
     if new_count == 10 {
-        //create vec of all recipients
-        let mut res: Vec<String> = vec![];
-        for count in 1..11 {
-            let address = DEPOSIT.load(deps.storage, count)?;
-            res.push(address);
-        }
+        //query profile name
+        let msg = QueryMsg::AllRecipients {
+            limit: None,
+            start_after: None,
+        };
+        let bin = query(deps.as_ref(), env, msg).unwrap();
+        let res: AllRecipientsResponse = from_binary(&bin).unwrap();
         let mut messages: Vec<BankMsg> = vec![];
-        for depositer in res {
+        for depositer in res.recipients {
             let bank_msg = BankMsg::Send {
                 to_address: depositer,
                 amount: vec![coin(9_000_000, SCRT)],
@@ -84,4 +93,33 @@ fn execute_deposit(
         COUNTER.save(deps.storage, &new_count)?;
         Ok(Response::new())
     }
+}
+#[entry_point]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::AllRecipients { limit, start_after } => {
+            query_all_recipients(deps, env, limit, start_after)
+        }
+    }
+}
+
+//pagination fields
+const MAX_LIMIT: u32 = 10;
+const DEFAULT_LIMIT: u32 = 10;
+
+fn query_all_recipients(
+    deps: Deps,
+    _env: Env,
+    limit: Option<u32>,
+    start_after: Option<u64>,
+) -> StdResult<Binary> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+    let recipients = DEPOSIT
+        .range(deps.storage, None, start, Order::Ascending)
+        .take(limit)
+        .map(|p| Ok(p?.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    to_binary(&AllRecipientsResponse { recipients })
 }

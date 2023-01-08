@@ -10,5 +10,5 @@ pub struct Config {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
-pub const DEPOSIT: Map<u64, String> = Map::new("deposit_amount_per_address");
-pub const COUNTER: Item<u64> = Item::new("counter");
+pub const DEPOSIT: Map<u32, String> = Map::new("deposit");
+pub const COUNTER: Item<u32> = Item::new("counter");
